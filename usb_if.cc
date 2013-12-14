@@ -10,6 +10,8 @@
 libusb_device_handle * devhandle = NULL;
 libusb_context * libusb_ctx = NULL;
 
+extern int global_end;
+
 void start_usb() {
 	// discover devices
 	int attached = 0;
@@ -31,17 +33,42 @@ void start_usb() {
  
 	if (libusb_claim_interface( devhandle, 0 )) {
 		fprintf(stderr,"Failed to claim interface! Is it busy? Maybe it cannot be detached\n");
+		exit(1);
 	}
+	fprintf(stderr,"Seems like we connected to the device!\n");
 }
 
 // Blocking read :D
 int read_usb(void * buffer, int maxlen) {
 	// Bulk read from endpoint 1
 	int read;
-	if (libusb_bulk_transfer(devhandle, 1, (unsigned char *)buffer, 1024, &read, 0) != 0)
+	while (!global_end) {
+		int r = libusb_bulk_transfer(devhandle, 0x81, (unsigned char *)buffer, 1024, &read, 1000);
+		if (r != 0 && r != LIBUSB_ERROR_TIMEOUT)
+			return -1;
+		if (r == 0)
+			break;
+	}
+	
+	return read;
+}
+// Blocking read :D
+int read_usb__(void * buffer, int maxlen) {
+	// Bulk read from endpoint 1
+	int read;
+	if (libusb_bulk_transfer(devhandle, 0x81, (unsigned char *)buffer, 1024, &read, 0) != 0)
 		return -1;
 	
 	return read;
+}
+
+int write_usb(void * buffer, int maxlen) {
+	// Bulk read from endpoint 1
+	int written;
+	if (libusb_bulk_transfer(devhandle, 1, (unsigned char *)buffer, maxlen, &written, 0) != 0)
+		return -1;
+	
+	return written;
 }
 
 void usb_finalize() {
