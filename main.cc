@@ -7,6 +7,9 @@
 #include "util.h"
 #include "packet.h"
 #include "usb_if.h"
+#ifdef __WIN32__
+#include <windows.h>
+#endif
 
 FILE * fout;
 FILE * fin;
@@ -36,6 +39,15 @@ int main(int argc, char ** argv) {
 	}
 	else
 		fin = fopen(argv[1], "rb");
+	
+	// Build-in win32 named pipe creation
+	#ifdef __WIN32__
+	if (strstr(argv[2],"\\\\.\\pipe\\") == argv[2]) {
+		CreateNamedPipe (argv[2], PIPE_ACCESS_OUTBOUND, 
+			PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
+			PIPE_UNLIMITED_INSTANCES, 100*1024, 100*1024, 1000, 0);
+	}
+	#endif
 	
 	// Output interface
 	fout = fopen(argv[2], "wb");

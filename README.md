@@ -28,3 +28,18 @@ again to the device (if this happens, unplug and replug the device).
 
 On Linux, everything works out of the box, no issues at all :D
 
+
+Named Pipes
+-----------
+
+You can use Named Pipes to perform real time capturing on Wireshark (or any other
+application supporting named pipes). On Linux you probably know how to do it
+already, just create a name pipe (using mknod) and use it as output file.
+
+On Windows you just need to specify a proper pipe filename in the format:
+
+\\.\pipe\mynamedpipe
+
+This way the output will go into a named instead of a file. CanCap will recognize
+the filename and automatically create a Named Pipe instead of a file.
+
