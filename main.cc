@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <pthread.h>
 #include "util.h"
 #include "packet.h"
 #include "usb_if.h"
@@ -13,12 +14,25 @@
 
 FILE * fout;
 FILE * fin;
+FILE * finpipe;
 
 int global_end = 0;
 
 void exit_pid(int s) {
 	fprintf(stderr,"Exiting!\n");
 	global_end = 1;
+}
+
+void * pipe_read(void* args) {
+	char temp[1024];
+	while (1) {
+		int r = fread(temp,1,1024,finpipe);
+		int wa = 0;
+		while (r > wa) {
+			int w = write_usb(&temp[wa], r - wa);
+			wa += w;
+		}
+	}
 }
 
 #define ARGV_MODE   1
@@ -51,12 +65,18 @@ int main(int argc, char ** argv) {
 		CreateNamedPipe (argv[ARGV_OUTPUT], PIPE_ACCESS_OUTBOUND, 
 			PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
 			PIPE_UNLIMITED_INSTANCES, 100*1024, 100*1024, 1000, 0);
+		
+		if (bridge)
+			finpipe  = fopen(argv[ARGV_OUTPUT], "rb");
 	}
 	#endif
 	
 	// Output interface
 	fout = fopen(argv[ARGV_OUTPUT], "wb");
 	InitHeader();
+	
+	pthread_t tr;
+	pthread_create(&tr, 0, &pipe_read, 0);
 	
 	std::string chunk;
 	while (!global_end) {
