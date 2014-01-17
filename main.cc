@@ -24,14 +24,11 @@ void exit_pid(int s) {
 }
 
 void * pipe_read(void* args) {
-	char temp[1024];
+	char temp;
 	while (1) {
-		int r = fread(temp,1,1024,finpipe);
-		int wa = 0;
-		while (r > wa) {
-			int w = write_usb(&temp[wa], r - wa);
-			wa += w;
-		}
+		fread(&temp,1,1,finpipe);
+		write_usb(&temp,1);
+		printf("%c",temp);
 	}
 }
 
@@ -47,29 +44,30 @@ int main(int argc, char ** argv) {
 		exit(1);
 	}
 	
-	int use_usb = (strcmp(argv[ARGV_INPUT],"usb")==0);
 	int bridge = (strcmp(argv[ARGV_MODE],"bridge")==0);
 
 	// Input interface	
-	if (use_usb) {
-		start_usb();
-		char estart [] = "connec\n";
-		write_usb(estart, strlen(estart));
-	}
-	else
-		fin = fopen(argv[ARGV_INPUT], "rb");
+	start_usb();
+	char estart [] = "connec\n";
+	write_usb(estart, strlen(estart));
 	
 	// Build-in win32 named pipe creation
 	#ifdef __WIN32__
-	if (strstr(argv[ARGV_OUTPUT],"\\\\.\\pipe\\") == argv[2]) {
+	if (strstr(argv[ARGV_OUTPUT],"\\\\.\\pipe\\") == argv[ARGV_OUTPUT]) {
 		CreateNamedPipe (argv[ARGV_OUTPUT], PIPE_ACCESS_OUTBOUND, 
 			PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
 			PIPE_UNLIMITED_INSTANCES, 100*1024, 100*1024, 1000, 0);
 		
-		if (bridge)
-			finpipe  = fopen(argv[ARGV_OUTPUT], "rb");
+	}
+	if (strstr(argv[ARGV_INPUT],"\\\\.\\pipe\\") == argv[ARGV_INPUT]) {
+		CreateNamedPipe (argv[ARGV_INPUT], PIPE_ACCESS_INBOUND, 
+			PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
+			PIPE_UNLIMITED_INSTANCES, 100*1024, 100*1024, 1000, 0);
+		
 	}
 	#endif
+	if (bridge)
+		finpipe  = fopen(argv[ARGV_INPUT], "rb");
 	
 	// Output interface
 	fout = fopen(argv[ARGV_OUTPUT], "wb");
@@ -92,8 +90,7 @@ int main(int argc, char ** argv) {
 		
 		int read;
 		char temp[1028];
-		if (use_usb) read = read_usb(temp, 1024);
-		else         read = fread(temp,1,1024,fin);
+		read = read_usb(temp, 1024);
 		temp[read] = 0;
 		printf("%s\n",temp);
 		
@@ -105,7 +102,7 @@ int main(int argc, char ** argv) {
 		if (read == 0) break; // End!
 	}
 	
-	if (use_usb) usb_finalize();
+	usb_finalize();
 	
 	return 0;
 }

@@ -27,6 +27,7 @@ typedef struct pcaprec_hdr_s {
 
 void write_data(void * buffer, int length) {
 	fwrite(buffer,1,length,fout);
+	fflush(fout);
 }
 
 int ReceivedPacket(std::string packet) {
